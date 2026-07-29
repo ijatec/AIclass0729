@@ -3,111 +3,356 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>심해 산호초 탐험 시뮬레이터</title>
+  <title>3D 횡단보도 거리 시뮬레이터</title>
   <style>
     * { box-sizing: border-box; }
+
     html, body {
+      margin: 0;
       width: 100%;
       height: 100%;
-      margin: 0;
       overflow: hidden;
-      background: #061a31;
-      font-family: Arial, "Malgun Gothic", sans-serif;
+      font-family: "Pretendard", "Malgun Gothic", Arial, sans-serif;
+      background: #86c9ee;
     }
+
     canvas { display: block; }
 
-    #intro {
+    #guide {
       position: fixed;
-      z-index: 10;
       left: 50%;
       top: 50%;
-      width: min(460px, calc(100vw - 36px));
       transform: translate(-50%, -50%);
-      padding: 30px;
+      width: min(490px, calc(100vw - 40px));
+      padding: 28px 32px;
+      color: white;
       text-align: center;
-      color: #effdff;
-      background: rgba(3, 19, 40, 0.9);
-      border: 1px solid rgba(116, 229, 255, 0.42);
-      border-radius: 20px;
-      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
+      background: rgba(12, 25, 41, 0.9);
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 18px;
+      box-shadow: 0 14px 45px rgba(0,0,0,0.28);
       transition: opacity .25s ease;
+      z-index: 10;
     }
-    #intro.hidden {
+
+    #guide.hidden {
       opacity: 0;
       pointer-events: none;
     }
-    #intro h1 {
+
+    #guide h1 {
       margin: 0 0 12px;
-      color: #7eeeff;
-      font-size: 25px;
+      font-size: 23px;
     }
-    #intro p {
+
+    #guide p {
       margin: 8px 0;
-      color: #d4f3fc;
       line-height: 1.65;
       font-size: 15px;
+      color: #dcecff;
     }
-    #startButton {
-      margin-top: 16px;
-      padding: 12px 24px;
-      border: 0;
-      border-radius: 9px;
-      color: #062139;
-      background: #6de8f6;
-      font-weight: bold;
-      font-size: 15px;
+
+    #guide strong {
+      color: #ffe67a;
+    }
+
+    #modeChoices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    .modeButton {
+      min-height: 108px;
+      padding: 14px 10px;
+      border: 2px solid rgba(255,255,255,0.24);
+      border-radius: 12px;
+      color: #ffffff;
+      background: rgba(255,255,255,0.08);
       cursor: pointer;
+      font-family: inherit;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
     }
+
+    .modeButton:hover,
+    .modeButton:focus-visible {
+      transform: translateY(-3px);
+      border-color: #ffe67a;
+      background: rgba(255, 220, 84, 0.17);
+      outline: none;
+    }
+
+    .modeButton .emoji {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 29px;
+    }
+
+    .modeButton .modeName {
+      display: block;
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    .modeButton small {
+      display: block;
+      margin-top: 5px;
+      color: #d5e8f5;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    #modeInfo {
+      min-height: 22px;
+      margin-top: 15px;
+      color: #ffe67a;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
     #hud {
       position: fixed;
-      z-index: 4;
       top: 16px;
       left: 16px;
-      padding: 12px 15px;
-      color: #dffaff;
-      background: rgba(3, 21, 43, 0.7);
-      border-left: 3px solid #65eaf8;
-      border-radius: 0 10px 10px 0;
+      color: #fff;
+      background: rgba(10, 25, 40, 0.68);
+      padding: 12px 16px;
+      border-radius: 10px;
       line-height: 1.65;
       font-size: 13px;
       pointer-events: none;
+      z-index: 5;
     }
-    #depth {
-      color: #79f5c8;
-      font-weight: bold;
+
+    #signalStatus {
+      color: #ff6767;
+      font-weight: 800;
     }
-    #crosshair {
+
+    #modeStatus,
+    #speedStatus,
+    #heightStatus {
+      color: #ffe67a;
+      font-weight: 800;
+    }
+
+    #accessPanel {
       position: fixed;
-      z-index: 3;
-      left: 50%;
-      top: 50%;
-      width: 14px;
-      height: 14px;
-      transform: translate(-50%, -50%);
-      opacity: 0;
-      pointer-events: none;
+      top: 16px;
+      right: 16px;
+      z-index: 9;
+      width: min(286px, calc(100vw - 32px));
+      padding: 15px;
+      color: #eff9ff;
+      background: rgba(10, 25, 40, 0.84);
+      border: 1px solid rgba(180, 230, 255, 0.3);
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.22);
     }
-    #crosshair::before, #crosshair::after {
+
+    #accessPanel h2 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: #9ceaff;
+    }
+
+    #accessPanel .panelGuide {
+      margin: 0 0 13px;
+      color: #c4dbe9;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .controlRow {
+      margin-top: 12px;
+    }
+
+    .controlRow label {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .controlValue {
+      color: #ffe67a;
+      white-space: nowrap;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #ffdc54;
+      cursor: pointer;
+    }
+
+    .toggleRow {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 13px;
+      padding-top: 11px;
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 25px;
+      flex: 0 0 auto;
+    }
+
+    .switch input {
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+
+    .switchSlider {
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background: #6c737a;
+      cursor: pointer;
+      transition: background .2s ease;
+    }
+
+    .switchSlider::before {
       content: "";
       position: absolute;
-      background: rgba(218, 255, 255, 0.9);
-      box-shadow: 0 0 5px #3eefff;
+      left: 3px;
+      bottom: 3px;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: #ffffff;
+      transition: transform .2s ease;
     }
-    #crosshair::before { width: 14px; height: 1px; top: 6px; }
-    #crosshair::after { width: 1px; height: 14px; left: 6px; }
-    body.playing #crosshair { opacity: 1; }
 
-    #legend {
+    .switch input:checked + .switchSlider {
+      background: #20ad72;
+    }
+
+    .switch input:checked + .switchSlider::before {
+      transform: translateX(21px);
+    }
+
+    #stepWarning,
+    #blockMessage {
       position: fixed;
-      right: 16px;
-      bottom: 16px;
-      z-index: 4;
-      padding: 9px 13px;
-      color: #d9f7ff;
-      background: rgba(3, 21, 43, 0.62);
-      border-radius: 9px;
-      font-size: 12px;
+      left: 50%;
+      padding: 13px 20px;
+      border-radius: 10px;
+      color: #fff8d4;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 800;
+      opacity: 0;
       pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 6;
+    }
+
+    #stepWarning {
+      bottom: 34px;
+      transform: translate(-50%, 18px);
+      border: 1px solid rgba(255, 231, 103, 0.9);
+      background: rgba(94, 56, 3, 0.9);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    #blockMessage {
+      bottom: 96px;
+      transform: translate(-50%, 18px);
+      border: 1px solid rgba(255, 125, 104, 0.95);
+      background: rgba(122, 28, 20, 0.94);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.38);
+    }
+
+    #stepWarning.visible,
+    #blockMessage.visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+
+    #crosshair {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 4;
+    }
+
+    #crosshair::before,
+    #crosshair::after {
+      content: "";
+      position: absolute;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 0 2px #000;
+    }
+
+    #crosshair::before {
+      width: 10px;
+      height: 1px;
+      top: 4px;
+      left: 0;
+    }
+
+    #crosshair::after {
+      width: 1px;
+      height: 10px;
+      left: 4px;
+      top: 0;
+    }
+
+    body.playing #crosshair {
+      opacity: 1;
+    }
+
+    @media (max-width: 620px) {
+      #accessPanel {
+        top: auto;
+        right: 12px;
+        bottom: 12px;
+        width: min(300px, calc(100vw - 24px));
+      }
+
+      #hud {
+        font-size: 12px;
+      }
+    }
+
+    @media (max-width: 460px) {
+      #guide {
+        padding: 24px 20px;
+      }
+
+      #modeChoices {
+        gap: 8px;
+      }
+
+      .modeButton {
+        min-height: 102px;
+        padding: 12px 6px;
+      }
+
+      #stepWarning,
+      #blockMessage {
+        width: calc(100vw - 28px);
+        font-size: 13px;
+      }
     }
   </style>
 
@@ -121,335 +366,809 @@
   </script>
 </head>
 <body>
-  <section id="intro">
-    <h1>🌊 심해 산호초 탐험</h1>
-    <p>빛이 스며드는 해저 산호초 사이를 탐험해 보세요.</p>
-    <p><b>마우스</b>: 시점 이동<br><b>W A S D</b>: 잠수정 이동</p>
-    <button id="startButton">탐험 시작</button>
-  </section>
-
   <div id="hud">
-    <strong>DEEP SEA EXPLORER</strong><br>
-    이동: W A S D &nbsp;|&nbsp; 시점: 마우스<br>
-    수심: <span id="depth">24.0 m</span>
+    <strong>3D 횡단보도 거리</strong><br />
+    모드: <span id="modeStatus">선택 대기</span><br />
+    이동 속도: <span id="speedStatus">선택 대기</span><br />
+    카메라 높이: <span id="heightStatus">1.62</span><br />
+    이동: <b>W A S D</b> &nbsp;|&nbsp; 시점: <b>마우스</b><br />
+    신호: <span id="signalStatus">● 보행자 정지</span>
   </div>
-  <div id="legend">🐠 산호초 생태 관찰 구역</div>
+
+  <aside id="accessPanel">
+    <h2>⚙ 체험 환경 조절</h2>
+    <p class="panelGuide">시점 제어 중에는 ESC를 눌러 마우스를 해제한 뒤 조절하세요.</p>
+
+    <div class="controlRow">
+      <label for="heightSlider">
+        <span>카메라 높이</span>
+        <span id="heightValue" class="controlValue">1.62 m</span>
+      </label>
+      <input id="heightSlider" type="range" min="0.80" max="2.00" value="1.62" step="0.01" />
+    </div>
+
+    <div class="controlRow">
+      <label for="speedSlider">
+        <span>이동 속도</span>
+        <span id="speedValue" class="controlValue">7.2</span>
+      </label>
+      <input id="speedSlider" type="range" min="2.0" max="10.0" value="7.2" step="0.1" />
+    </div>
+
+    <div class="toggleRow">
+      <span>🟨 점자블록 표시</span>
+      <label class="switch" title="점자블록 표시 켜기/끄기">
+        <input id="tactileToggle" type="checkbox" checked />
+        <span class="switchSlider"></span>
+      </label>
+    </div>
+
+    <div class="toggleRow">
+      <span>🚧 인도 장애물 표시</span>
+      <label class="switch" title="인도 장애물 켜기/끄기">
+        <input id="obstacleToggle" type="checkbox" checked />
+        <span class="switchSlider"></span>
+      </label>
+    </div>
+  </aside>
+
+  <div id="stepWarning">⚠ 주의! 인도와 도로 사이에 15cm 단차가 있습니다.</div>
+  <div id="blockMessage">⛔ 휠체어는 15cm 단차를 통과할 수 없습니다.</div>
   <div id="crosshair"></div>
+
+  <div id="guide">
+    <h1>🚶 3D 거리 시뮬레이터</h1>
+    <p>오른쪽 <strong>인도</strong>에서 시작합니다.</p>
+    <p>시작할 이동 방식을 선택하세요.</p>
+
+    <div id="modeChoices">
+      <button class="modeButton" type="button" data-mode="walking">
+        <span class="emoji">🚶</span>
+        <span class="modeName">일반 보행 모드</span>
+        <small>15cm 단차를 넘어<br />도로로 이동할 수 있습니다.</small>
+      </button>
+
+      <button class="modeButton" type="button" data-mode="wheelchair">
+        <span class="emoji">♿</span>
+        <span class="modeName">휠체어 모드</span>
+        <small>보행보다 50% 느리며<br />15cm 단차는 통과할 수 없습니다.</small>
+      </button>
+    </div>
+
+    <div id="modeInfo">모드를 선택하면 탐험이 시작됩니다.</div>
+  </div>
 
   <script type="module">
     import * as THREE from "three";
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x062c52);
-    scene.fog = new THREE.FogExp2(0x063359, 0.021);
+    scene.background = new THREE.Color(0x8ccfee);
+    scene.fog = new THREE.Fog(0x8ccfee, 55, 155);
 
-    const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 220);
-    camera.position.set(0, 4.4, 22);
+    const ROAD_SURFACE_HEIGHT = 0.12;
+    const SIDEWALK_SURFACE_HEIGHT = 0.27;
+    const WALKING_EYE_HEIGHT = 1.62;
+    const WHEELCHAIR_EYE_HEIGHT = 1.20;
+    const WALKING_SPEED = 7.2;
+    const WHEELCHAIR_SPEED = 3.6;
+
+    const STEP_EDGE_X = 8.15;
+    const CURB_INNER_EDGE = 7.975;
+    const CURB_OUTER_EDGE = 8.325;
+    const STEP_WARNING_DISTANCE = 1.55;
+    const STEP_ALERT_RESET_DISTANCE = 1.8;
+    const POINTER_LOCK_RETRY_DELAY = 1200;
+
+    const camera = new THREE.PerspectiveCamera(
+      72,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      300
+    );
+    camera.position.set(10.5, SIDEWALK_SURFACE_HEIGHT + WALKING_EYE_HEIGHT, 20);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
-    const ambient = new THREE.HemisphereLight(0x3fc8ff, 0x052010, 2.2);
-    scene.add(ambient);
+    scene.add(new THREE.HemisphereLight(0xdaf4ff, 0x5f7251, 2.2));
 
-    const sunlight = new THREE.DirectionalLight(0x9eefff, 3.5);
-    sunlight.position.set(-18, 30, 12);
-    sunlight.castShadow = true;
-    sunlight.shadow.mapSize.set(2048, 2048);
-    sunlight.shadow.camera.left = -40;
-    sunlight.shadow.camera.right = 40;
-    sunlight.shadow.camera.top = 40;
-    sunlight.shadow.camera.bottom = -40;
-    scene.add(sunlight);
+    const sunLight = new THREE.DirectionalLight(0xfff1d0, 3.2);
+    sunLight.position.set(-35, 45, 25);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -65;
+    sunLight.shadow.camera.right = 65;
+    sunLight.shadow.camera.top = 65;
+    sunLight.shadow.camera.bottom = -65;
+    scene.add(sunLight);
 
-    const oceanFloorMaterial = new THREE.MeshStandardMaterial({
-      color: 0x9a8059,
-      roughness: 1,
-      metalness: 0
-    });
-
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(190, 190, 50, 50),
-      oceanFloorMaterial
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(220, 220),
+      new THREE.MeshStandardMaterial({ color: 0x6c9258, roughness: 1 })
     );
-    floor.rotation.x = -Math.PI / 2;
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
 
-    const floorPosition = floor.geometry.attributes.position;
-    for (let i = 0; i < floorPosition.count; i++) {
-      const x = floorPosition.getX(i);
-      const y = floorPosition.getY(i);
-      const height = Math.sin(x * 0.22) * 0.22 + Math.cos(y * 0.18) * 0.18 + (Math.random() - 0.5) * 0.12;
-      floorPosition.setZ(i, height);
+    function mesh(geometry, material, x, y, z, cast = true, receive = true, parent = scene) {
+      const object = new THREE.Mesh(geometry, material);
+      object.position.set(x, y, z);
+      object.castShadow = cast;
+      object.receiveShadow = receive;
+      parent.add(object);
+      return object;
     }
-    floor.geometry.computeVertexNormals();
-    floor.receiveShadow = true;
-    scene.add(floor);
 
-    const rockMaterials = [
-      new THREE.MeshStandardMaterial({ color: 0x53595e, roughness: 1 }),
-      new THREE.MeshStandardMaterial({ color: 0x705e4b, roughness: 1 }),
-      new THREE.MeshStandardMaterial({ color: 0x44585b, roughness: 1 })
-    ];
+    const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x30353a, roughness: 0.9 });
+    const sidewalkMaterial = new THREE.MeshStandardMaterial({ color: 0xb9b7ad, roughness: 0.95 });
+    const curbMaterial = new THREE.MeshStandardMaterial({ color: 0xdfdfd8, roughness: 0.8 });
+    const lineMaterial = new THREE.MeshStandardMaterial({ color: 0xffd83d, roughness: 0.72 });
+    const whiteMaterial = new THREE.MeshStandardMaterial({ color: 0xf7f7f1, roughness: 0.75 });
 
-    function createRock(x, z, scale) {
-      const rock = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(1, 1),
-        rockMaterials[Math.floor(Math.random() * rockMaterials.length)]
+    mesh(new THREE.BoxGeometry(16, 0.18, 180), roadMaterial, 0, 0.03, 0);
+    mesh(new THREE.BoxGeometry(5, 0.15, 180), sidewalkMaterial, -10.5, 0.195, 0);
+    mesh(new THREE.BoxGeometry(5, 0.15, 180), sidewalkMaterial, 10.5, 0.195, 0);
+    mesh(new THREE.BoxGeometry(0.35, 0.15, 180), curbMaterial, -8.15, 0.195, 0);
+    mesh(new THREE.BoxGeometry(0.35, 0.15, 180), curbMaterial, 8.15, 0.195, 0);
+
+    for (let z = -82; z <= 82; z += 9) {
+      if (Math.abs(z) < 8) continue;
+      mesh(new THREE.BoxGeometry(0.22, 0.03, 4.5), lineMaterial, 0, 0.15, z, false);
+    }
+
+    for (let x = -6.9; x <= 6.9; x += 1.55) {
+      mesh(new THREE.BoxGeometry(0.92, 0.055, 7.1), whiteMaterial, x, 0.16, 0, false);
+    }
+
+    function createBuilding(x, z, width, height, depth, color) {
+      const building = new THREE.Group();
+
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.82 })
       );
-      rock.position.set(x, 0.4 * scale, z);
-      rock.scale.set(scale * (0.8 + Math.random() * 0.5), scale * 0.7, scale);
-      rock.rotation.set(Math.random(), Math.random(), Math.random());
-      rock.castShadow = true;
-      rock.receiveShadow = true;
-      scene.add(rock);
-    }
+      body.position.y = height / 2 + 0.12;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      building.add(body);
 
-    for (let i = 0; i < 80; i++) {
-      const x = (Math.random() - 0.5) * 90;
-      const z = (Math.random() - 0.5) * 110;
-      if (Math.abs(x) < 8 && Math.abs(z) < 14) continue;
-      createRock(x, z, 0.25 + Math.random() * 1.25);
-    }
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(width + 0.25, 0.35, depth + 0.25),
+        new THREE.MeshStandardMaterial({ color: 0x424850, roughness: 0.8 })
+      );
+      roof.position.y = height + 0.3;
+      roof.castShadow = true;
+      building.add(roof);
 
-    const coralMaterials = [
-      new THREE.MeshStandardMaterial({ color: 0xff6a8c, roughness: 0.75 }),
-      new THREE.MeshStandardMaterial({ color: 0xffa64d, roughness: 0.75 }),
-      new THREE.MeshStandardMaterial({ color: 0xae75f3, roughness: 0.75 }),
-      new THREE.MeshStandardMaterial({ color: 0xef3f70, roughness: 0.75 }),
-      new THREE.MeshStandardMaterial({ color: 0x55d6bb, roughness: 0.75 })
-    ];
-
-    function createCoral(x, z, scale = 1) {
-      const group = new THREE.Group();
-      const material = coralMaterials[Math.floor(Math.random() * coralMaterials.length)];
-      const branches = 4 + Math.floor(Math.random() * 4);
-
-      for (let i = 0; i < branches; i++) {
-        const height = (1.0 + Math.random() * 1.8) * scale;
-        const branch = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.09 * scale, 0.18 * scale, height, 8),
-          material
-        );
-        const angle = (i / branches) * Math.PI * 2 + Math.random() * 0.45;
-        const distance = Math.random() * 0.4 * scale;
-        branch.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance);
-        branch.rotation.z = Math.cos(angle) * (0.12 + Math.random() * 0.22);
-        branch.rotation.x = Math.sin(angle) * (0.12 + Math.random() * 0.22);
-        branch.castShadow = true;
-        group.add(branch);
-
-        const tip = new THREE.Mesh(
-          new THREE.SphereGeometry(0.17 * scale, 10, 8),
-          material
-        );
-        tip.position.copy(branch.position);
-        tip.position.y += height / 2 - 0.05;
-        tip.castShadow = true;
-        group.add(tip);
-      }
-
-      group.position.set(x, 0.12, z);
-      scene.add(group);
-    }
-
-    function createSeaweed(x, z, height) {
-      const group = new THREE.Group();
-      const material = new THREE.MeshStandardMaterial({
-        color: Math.random() > 0.5 ? 0x247f56 : 0x4caa62,
-        roughness: 0.9,
-        side: THREE.DoubleSide
+      const windowMat = new THREE.MeshStandardMaterial({
+        color: 0x7dc3da,
+        emissive: 0x143040,
+        emissiveIntensity: 0.25,
+        roughness: 0.35,
+        metalness: 0.15
       });
 
-      for (let i = 0; i < 4; i++) {
-        const blade = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.24, height * (0.7 + Math.random() * 0.4), 1, 6),
-          material
-        );
-        blade.position.set((Math.random() - 0.5) * 0.45, blade.geometry.parameters.height / 2, (Math.random() - 0.5) * 0.45);
-        blade.rotation.y = Math.random() * Math.PI;
-        blade.userData.phase = Math.random() * Math.PI * 2;
-        group.add(blade);
-      }
-      group.position.set(x, 0.12, z);
-      group.userData.seaweed = true;
-      scene.add(group);
-      return group;
-    }
+      const rows = Math.max(2, Math.floor(height / 2.7));
 
-    const seaweedGroups = [];
-    for (let i = 0; i < 55; i++) {
-      const x = (Math.random() - 0.5) * 76;
-      const z = (Math.random() - 0.5) * 92;
-      seaweedGroups.push(createSeaweed(x, z, 1 + Math.random() * 2.8));
-    }
-
-    [
-      [-8, 3, 1.5], [7, -4, 1.7], [-16, -16, 1.3], [14, 15, 1.6],
-      [-22, 9, 1.2], [23, -10, 1.5], [4, -24, 1.3], [-5, 24, 1.4],
-      [28, 26, 1.5], [-29, -28, 1.7], [20, -34, 1.4], [-22, 35, 1.4]
-    ].forEach(([x, z, s]) => createCoral(x, z, s));
-
-    const fishMaterials = [
-      new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.55 }),
-      new THREE.MeshStandardMaterial({ color: 0x49d8ff, roughness: 0.55 }),
-      new THREE.MeshStandardMaterial({ color: 0xff719b, roughness: 0.55 }),
-      new THREE.MeshStandardMaterial({ color: 0x9ef06b, roughness: 0.55 })
-    ];
-
-    const fishSchools = [];
-
-    function createFishSchool(centerX, centerY, centerZ, count) {
-      const school = new THREE.Group();
-
-      for (let i = 0; i < count; i++) {
-        const fish = new THREE.Group();
-        const mat = fishMaterials[Math.floor(Math.random() * fishMaterials.length)];
-
-        const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), mat);
-        body.scale.set(1.6, 0.75, 0.72);
-        fish.add(body);
-
-        const tail = new THREE.Mesh(
-          new THREE.ConeGeometry(0.25, 0.48, 4),
-          mat
-        );
-        tail.rotation.z = -Math.PI / 2;
-        tail.position.x = -0.55;
-        fish.add(tail);
-
-        fish.position.set(
-          (Math.random() - 0.5) * 8,
-          (Math.random() - 0.5) * 3,
-          (Math.random() - 0.5) * 6
-        );
-        fish.userData.offset = Math.random() * Math.PI * 2;
-        fish.userData.speed = 0.35 + Math.random() * 0.4;
-        school.add(fish);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < 3; col++) {
+          const win = new THREE.Mesh(
+            new THREE.BoxGeometry(0.85, 0.85, 0.08),
+            windowMat
+          );
+          win.position.set(
+            -width / 2 + 1.15 + col * ((width - 2.3) / 2),
+            1.6 + row * 2.35,
+            depth / 2 + 0.045
+          );
+          building.add(win);
+        }
       }
 
-      school.position.set(centerX, centerY, centerZ);
-      school.userData.radius = 3 + Math.random() * 3;
-      school.userData.speed = 0.16 + Math.random() * 0.12;
-      school.userData.offset = Math.random() * Math.PI * 2;
-      scene.add(school);
-      fishSchools.push(school);
+      building.position.set(x, 0, z);
+      scene.add(building);
     }
 
-    createFishSchool(-8, 5.5, -6, 17);
-    createFishSchool(14, 7, -22, 14);
-    createFishSchool(-18, 6, 17, 12);
-    createFishSchool(8, 4, 29, 16);
+    const buildingColors = [0xd8876d, 0xe3bd68, 0x798db3, 0xa97b92, 0x77a690, 0xc98361];
+    const buildingZ = [-62, -43, -25, 22, 42, 62];
 
-    const treasure = new THREE.Group();
-    const chestBase = new THREE.Mesh(
-      new THREE.BoxGeometry(2.1, 1, 1.25),
-      new THREE.MeshStandardMaterial({ color: 0x70401b, roughness: 0.75 })
-    );
-    chestBase.position.y = 0.6;
-    chestBase.castShadow = true;
-    treasure.add(chestBase);
-
-    const chestTop = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.05, 1.05, 1.25, 16, 1, false, 0, Math.PI),
-      new THREE.MeshStandardMaterial({ color: 0x8e5725, roughness: 0.7 })
-    );
-    chestTop.rotation.z = Math.PI / 2;
-    chestTop.position.set(0, 1.08, 0);
-    chestTop.castShadow = true;
-    treasure.add(chestTop);
-
-    const gold = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 1.3, 1.3),
-      new THREE.MeshStandardMaterial({ color: 0xffcf3d, metalness: 0.7, roughness: 0.3 })
-    );
-    gold.position.set(0, 0.85, 0.02);
-    treasure.add(gold);
-
-    treasure.position.set(-4, 0.15, -14);
-    treasure.rotation.y = 0.35;
-    scene.add(treasure);
-
-    const bubbles = [];
-    const bubbleMaterial = new THREE.MeshBasicMaterial({
-      color: 0xa7efff,
-      transparent: true,
-      opacity: 0.35
+    buildingZ.forEach((z, i) => {
+      createBuilding(-15.5, z, 7 + (i % 2), 11 + (i % 3) * 3, 11, buildingColors[i]);
+      createBuilding(
+        15.5,
+        z + 4,
+        7 + ((i + 1) % 2),
+        12 + ((i + 2) % 3) * 3,
+        11,
+        buildingColors[(i + 2) % buildingColors.length]
+      );
     });
 
-    for (let i = 0; i < 170; i++) {
-      const bubble = new THREE.Mesh(
-        new THREE.SphereGeometry(0.025 + Math.random() * 0.07, 8, 8),
-        bubbleMaterial
+    function createTree(x, z) {
+      const tree = new THREE.Group();
+
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.26, 2.2, 10),
+        new THREE.MeshStandardMaterial({ color: 0x795233, roughness: 1 })
       );
-      bubble.position.set(
-        (Math.random() - 0.5) * 70,
-        Math.random() * 18,
-        (Math.random() - 0.5) * 90
-      );
-      bubble.userData.speed = 0.3 + Math.random() * 0.7;
-      bubble.userData.drift = Math.random() * Math.PI * 2;
-      scene.add(bubble);
-      bubbles.push(bubble);
+      trunk.position.y = 1.15;
+      trunk.castShadow = true;
+      tree.add(trunk);
+
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f7b42, roughness: 0.95 });
+
+      const crown1 = new THREE.Mesh(new THREE.SphereGeometry(1.18, 12, 10), leafMat);
+      crown1.position.set(0, 2.85, 0);
+      crown1.castShadow = true;
+      tree.add(crown1);
+
+      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.88, 12, 10), leafMat);
+      crown2.position.set(0.45, 3.3, 0.1);
+      crown2.castShadow = true;
+      tree.add(crown2);
+
+      tree.position.set(x, SIDEWALK_SURFACE_HEIGHT, z);
+      scene.add(tree);
     }
 
-    const intro = document.getElementById("intro");
-    const startButton = document.getElementById("startButton");
-    const depthLabel = document.getElementById("depth");
+    [-72, -55, -37, -19, -10, 10, 20, 38, 56, 74].forEach(z => {
+      createTree(-10.5, z);
+      createTree(10.5, z + 3);
+    });
 
-    let locked = false;
-    let yaw = 0;
-    let pitch = -0.08;
+    function createSignal(x, z, side) {
+      const signal = new THREE.Group();
+      const poleMat = new THREE.MeshStandardMaterial({
+        color: 0x3c4144,
+        metalness: 0.55,
+        roughness: 0.45
+      });
+
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.13, 0.16, 4.3, 12),
+        poleMat
+      );
+      pole.position.y = 2.15;
+      pole.castShadow = true;
+      signal.add(pole);
+
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.42, 0.48, 0.15, 16),
+        poleMat
+      );
+      base.position.y = 0.08;
+      signal.add(base);
+
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 1.75, 0.48),
+        new THREE.MeshStandardMaterial({ color: 0x202426, roughness: 0.65 })
+      );
+      box.position.set(0, 3.55, 0);
+      box.castShadow = true;
+      signal.add(box);
+
+      const redMat = new THREE.MeshStandardMaterial({ color: 0x550707, emissive: 0x220000 });
+      const yellowMat = new THREE.MeshStandardMaterial({ color: 0x594000, emissive: 0x1e1600 });
+      const greenMat = new THREE.MeshStandardMaterial({ color: 0x064b19, emissive: 0x001b08 });
+      const lights = [];
+
+      [redMat, yellowMat, greenMat].forEach((mat, index) => {
+        const light = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 12), mat);
+        light.position.set(0, 4.05 - index * 0.55, 0.27 * side);
+        signal.add(light);
+        lights.push(mat);
+      });
+
+      signal.position.set(x, 0, z);
+      scene.add(signal);
+      return lights;
+    }
+
+    const allSignalLights = [
+      ...createSignal(-8.9, 4.6, 1),
+      ...createSignal(8.9, -4.6, -1)
+    ];
+
+    const pedestrianPole = new THREE.Group();
+    const pedPoleMat = new THREE.MeshStandardMaterial({
+      color: 0x42474a,
+      metalness: 0.5,
+      roughness: 0.4
+    });
+
+    const pedPole = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.14, 3.3, 10),
+      pedPoleMat
+    );
+    pedPole.position.y = 1.65;
+    pedestrianPole.add(pedPole);
+
+    const pedBox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.68, 1.05, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0x1d2224 })
+    );
+    pedBox.position.y = 3.02;
+    pedestrianPole.add(pedBox);
+
+    const pedLightMat = new THREE.MeshStandardMaterial({
+      color: 0x7c0909,
+      emissive: 0x3c0000,
+      emissiveIntensity: 1
+    });
+
+    const pedLight = new THREE.Mesh(new THREE.CircleGeometry(0.19, 20), pedLightMat);
+    pedLight.position.set(0, 3.04, 0.165);
+    pedestrianPole.add(pedLight);
+
+    pedestrianPole.position.set(-8.85, 0, -4.8);
+    scene.add(pedestrianPole);
+
+    // 점자블록 그룹: 횡단보도 양쪽 인도에서 길을 안내하는 황색 점자블록
+    const tactileGroup = new THREE.Group();
+    const tactileMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf5c928,
+      roughness: 0.76
+    });
+
+    function addTactileTile(x, z, direction = "across") {
+      const tile = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          direction === "across" ? 0.48 : 0.72,
+          0.055,
+          direction === "across" ? 0.72 : 0.48
+        ),
+        tactileMaterial
+      );
+      tile.position.set(x, SIDEWALK_SURFACE_HEIGHT + 0.028, z);
+      tile.castShadow = true;
+      tile.receiveShadow = true;
+      tactileGroup.add(tile);
+
+      for (let dotX = -0.13; dotX <= 0.13; dotX += 0.26) {
+        for (let dotZ = -0.17; dotZ <= 0.17; dotZ += 0.34) {
+          const dot = new THREE.Mesh(
+            new THREE.SphereGeometry(0.045, 8, 6),
+            tactileMaterial
+          );
+          dot.position.set(x + dotX, SIDEWALK_SURFACE_HEIGHT + 0.075, z + dotZ);
+          tactileGroup.add(dot);
+        }
+      }
+    }
+
+    [-1.2, -0.4, 0.4, 1.2].forEach(z => {
+      addTactileTile(8.85, z, "across");
+      addTactileTile(-8.85, z, "across");
+    });
+
+    [9.55, 10.25, 10.95, 11.65, 12.35].forEach(x => {
+      addTactileTile(x, 0, "along");
+      addTactileTile(-x, 0, "along");
+    });
+
+    scene.add(tactileGroup);
+
+    // 인도 장애물 그룹과 충돌 영역
+    const obstacleGroup = new THREE.Group();
+    const obstacleColliders = [];
+    const coneOrange = new THREE.MeshStandardMaterial({ color: 0xf47b20, roughness: 0.72 });
+    const coneWhite = new THREE.MeshStandardMaterial({ color: 0xf8f8ef, roughness: 0.72 });
+    const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xa76b37, roughness: 0.9 });
+
+    function createCone(x, z) {
+      const cone = new THREE.Group();
+
+      const base = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, 0.07, 16),
+        new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 })
+      );
+      base.position.y = SIDEWALK_SURFACE_HEIGHT + 0.035;
+      cone.add(base);
+
+      const body = new THREE.Mesh(
+        new THREE.ConeGeometry(0.19, 0.68, 16),
+        coneOrange
+      );
+      body.position.y = SIDEWALK_SURFACE_HEIGHT + 0.38;
+      body.castShadow = true;
+      cone.add(body);
+
+      const stripe = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.142, 0.16, 0.11, 16),
+        coneWhite
+      );
+      stripe.position.y = SIDEWALK_SURFACE_HEIGHT + 0.42;
+      cone.add(stripe);
+
+      cone.position.set(x, 0, z);
+      obstacleGroup.add(cone);
+      obstacleColliders.push({ x, z, radius: 0.56 });
+    }
+
+    function createBoxObstacle(x, z) {
+      const box = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.62, 0.65), boxMaterial);
+      box.position.set(x, SIDEWALK_SURFACE_HEIGHT + 0.31, z);
+      box.castShadow = true;
+      box.receiveShadow = true;
+      obstacleGroup.add(box);
+
+      const tape = new THREE.Mesh(
+        new THREE.BoxGeometry(0.87, 0.14, 0.03),
+        new THREE.MeshStandardMaterial({ color: 0xffd23d, roughness: 0.6 })
+      );
+      tape.position.set(x, SIDEWALK_SURFACE_HEIGHT + 0.5, z + 0.335);
+      obstacleGroup.add(tape);
+
+      obstacleColliders.push({ x, z, radius: 0.78 });
+    }
+
+    createCone(10.5, 14.2);
+    createBoxObstacle(10.9, 8.3);
+    createCone(-10.5, -12.5);
+    createBoxObstacle(-10.8, -21.5);
+
+    scene.add(obstacleGroup);
+
     const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false };
 
-    function startExploration() {
-      renderer.domElement.requestPointerLock();
+    let yaw = 0;
+    let pitch = 0;
+    let isLocked = false;
+    let wasLocked = false;
+    let currentMode = null;
+    let audioContext = null;
+    let blockMessageTimer = null;
+    let lastPointerUnlockTime = -Infinity;
+    let hasPlayedApproachAlert = false;
+    let hasPlayedBlockAlert = false;
+    let obstaclesEnabled = true;
+
+    const guide = document.getElementById("guide");
+    const modeButtons = document.querySelectorAll(".modeButton");
+    const modeInfo = document.getElementById("modeInfo");
+    const signalStatus = document.getElementById("signalStatus");
+    const modeStatus = document.getElementById("modeStatus");
+    const speedStatus = document.getElementById("speedStatus");
+    const heightStatus = document.getElementById("heightStatus");
+    const stepWarning = document.getElementById("stepWarning");
+    const blockMessage = document.getElementById("blockMessage");
+
+    const heightSlider = document.getElementById("heightSlider");
+    const speedSlider = document.getElementById("speedSlider");
+    const heightValue = document.getElementById("heightValue");
+    const speedValue = document.getElementById("speedValue");
+    const tactileToggle = document.getElementById("tactileToggle");
+    const obstacleToggle = document.getElementById("obstacleToggle");
+
+    function getEyeHeight() {
+      return Number(heightSlider.value);
     }
 
-    startButton.addEventListener("click", startExploration);
-    intro.addEventListener("click", event => {
-      if (event.target !== startButton) startExploration();
+    function getMovementSpeed() {
+      return Number(speedSlider.value);
+    }
+
+    function updateHeightDisplay() {
+      const height = getEyeHeight();
+      heightValue.textContent = `${height.toFixed(2)} m`;
+      heightStatus.textContent = `${height.toFixed(2)} m`;
+
+      if (currentMode) {
+        camera.position.y = getWalkingSurfaceHeight(camera.position.x) + height;
+      }
+    }
+
+    function updateSpeedDisplay() {
+      const speed = getMovementSpeed();
+      speedValue.textContent = speed.toFixed(1);
+
+      if (currentMode === "wheelchair") {
+        speedStatus.textContent = `${speed.toFixed(1)} (직접 조절됨)`;
+      } else if (currentMode === "walking") {
+        speedStatus.textContent = `${speed.toFixed(1)} (직접 조절됨)`;
+      } else {
+        speedStatus.textContent = speed.toFixed(1);
+      }
+    }
+
+    heightSlider.addEventListener("input", updateHeightDisplay);
+    speedSlider.addEventListener("input", updateSpeedDisplay);
+
+    tactileToggle.addEventListener("change", () => {
+      tactileGroup.visible = tactileToggle.checked;
+    });
+
+    obstacleToggle.addEventListener("change", () => {
+      obstaclesEnabled = obstacleToggle.checked;
+      obstacleGroup.visible = obstaclesEnabled;
+    });
+
+    function createAudioContext() {
+      if (!audioContext) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioContext = new AudioContextClass();
+      }
+
+      if (audioContext?.state === "suspended") {
+        audioContext.resume();
+      }
+    }
+
+    function playApproachAlertSound() {
+      if (!audioContext || audioContext.state !== "running") return;
+
+      const now = audioContext.currentTime;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(660, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.07, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.17);
+    }
+
+    function playBlockWarningSound() {
+      if (!audioContext || audioContext.state !== "running") return;
+
+      const now = audioContext.currentTime;
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+
+      oscillator.type = "square";
+      oscillator.frequency.setValueAtTime(920, now);
+      oscillator.frequency.linearRampToValueAtTime(500, now + 0.28);
+
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start(now);
+      oscillator.stop(now + 0.31);
+    }
+
+    function showBlockMessage(message) {
+      blockMessage.textContent = message;
+      blockMessage.classList.add("visible");
+
+      clearTimeout(blockMessageTimer);
+      blockMessageTimer = setTimeout(() => {
+        blockMessage.classList.remove("visible");
+      }, 1800);
+    }
+
+    function requestPointerLockSafely() {
+      if (!currentMode || isLocked) return;
+
+      const elapsedAfterUnlock = performance.now() - lastPointerUnlockTime;
+      const remaining = POINTER_LOCK_RETRY_DELAY - elapsedAfterUnlock;
+
+      if (remaining > 0) {
+        modeInfo.textContent =
+          `마우스 제어를 다시 시작하려면 ${Math.ceil(remaining / 100) / 10}초 후 다시 클릭하세요.`;
+        return;
+      }
+
+      createAudioContext();
+
+      try {
+        const result = renderer.domElement.requestPointerLock();
+
+        if (result && typeof result.catch === "function") {
+          result.catch(() => {
+            modeInfo.textContent = "마우스 제어를 시작할 수 없습니다. 잠시 후 다시 클릭하세요.";
+          });
+        }
+      } catch {
+        modeInfo.textContent = "마우스 제어를 시작할 수 없습니다. 잠시 후 다시 클릭하세요.";
+      }
+    }
+
+    function selectMode(mode) {
+      currentMode = mode;
+      hasPlayedApproachAlert = false;
+      hasPlayedBlockAlert = false;
+
+      if (mode === "wheelchair") {
+        heightSlider.value = WHEELCHAIR_EYE_HEIGHT;
+        speedSlider.value = WHEELCHAIR_SPEED;
+        modeStatus.textContent = "♿ 휠체어 모드";
+        modeInfo.textContent = "휠체어 모드: 속도와 카메라 높이를 조절할 수 있으며 15cm 단차는 통과할 수 없습니다.";
+      } else {
+        heightSlider.value = WALKING_EYE_HEIGHT;
+        speedSlider.value = WALKING_SPEED;
+        modeStatus.textContent = "🚶 일반 보행 모드";
+        modeInfo.textContent = "일반 보행 모드: 속도와 카메라 높이를 조절할 수 있으며 15cm 단차를 넘어 이동할 수 있습니다.";
+      }
+
+      updateHeightDisplay();
+      updateSpeedDisplay();
+      requestPointerLockSafely();
+    }
+
+    modeButtons.forEach(button => {
+      button.addEventListener("click", event => {
+        event.stopPropagation();
+        selectMode(button.dataset.mode);
+      });
+    });
+
+    guide.addEventListener("click", () => {
+      if (currentMode) requestPointerLockSafely();
     });
 
     document.addEventListener("pointerlockchange", () => {
-      locked = document.pointerLockElement === renderer.domElement;
-      intro.classList.toggle("hidden", locked);
-      document.body.classList.toggle("playing", locked);
+      isLocked = document.pointerLockElement === renderer.domElement;
+
+      if (!isLocked && wasLocked) {
+        lastPointerUnlockTime = performance.now();
+        modeInfo.textContent = "마우스 제어가 해제되었습니다. 1.2초 후 안내창을 클릭하면 다시 시작합니다.";
+      }
+
+      document.body.classList.toggle("playing", isLocked);
+      guide.classList.toggle("hidden", isLocked);
+
+      if (!isLocked) {
+        stepWarning.classList.remove("visible");
+      }
+
+      wasLocked = isLocked;
+    });
+
+    document.addEventListener("pointerlockerror", () => {
+      lastPointerUnlockTime = performance.now();
+      modeInfo.textContent = "마우스 제어를 시작할 수 없습니다. 잠시 후 다시 클릭하세요.";
     });
 
     document.addEventListener("mousemove", event => {
-      if (!locked) return;
-      yaw -= event.movementX * 0.0024;
-      pitch -= event.movementY * 0.0022;
-      pitch = THREE.MathUtils.clamp(pitch, -0.85, 0.65);
+      if (!isLocked) return;
+
+      yaw -= event.movementX * 0.0023;
+      pitch -= event.movementY * 0.0023;
+      pitch = Math.max(-1.35, Math.min(1.35, pitch));
       camera.rotation.set(pitch, yaw, 0, "YXZ");
     });
 
-    addEventListener("keydown", event => {
-      if (event.code in keys) {
+    window.addEventListener("keydown", event => {
+      if (Object.prototype.hasOwnProperty.call(keys, event.code)) {
         keys[event.code] = true;
         event.preventDefault();
       }
     });
 
-    addEventListener("keyup", event => {
-      if (event.code in keys) keys[event.code] = false;
+    window.addEventListener("keyup", event => {
+      if (Object.prototype.hasOwnProperty.call(keys, event.code)) {
+        keys[event.code] = false;
+      }
     });
 
+    function getWalkingSurfaceHeight(x) {
+      const distanceFromRoadCenter = Math.abs(x);
+
+      if (distanceFromRoadCenter >= 7.98 && distanceFromRoadCenter <= 13.05) {
+        return SIDEWALK_SURFACE_HEIGHT;
+      }
+
+      if (distanceFromRoadCenter < 7.98) {
+        return ROAD_SURFACE_HEIGHT;
+      }
+
+      return 0;
+    }
+
+    function isWheelchairBlockedByStep(previousX, nextX) {
+      const movingFromRightSidewalkToRoad =
+        previousX > CURB_OUTER_EDGE && nextX <= CURB_OUTER_EDGE;
+
+      const movingFromRightRoadToSidewalk =
+        previousX < CURB_INNER_EDGE && nextX >= CURB_INNER_EDGE;
+
+      const movingFromLeftSidewalkToRoad =
+        previousX < -CURB_OUTER_EDGE && nextX >= -CURB_OUTER_EDGE;
+
+      const movingFromLeftRoadToSidewalk =
+        previousX > -CURB_INNER_EDGE && nextX <= -CURB_INNER_EDGE;
+
+      return (
+        movingFromRightSidewalkToRoad ||
+        movingFromRightRoadToSidewalk ||
+        movingFromLeftSidewalkToRoad ||
+        movingFromLeftRoadToSidewalk
+      );
+    }
+
+    function isBlockedByObstacle(nextX, nextZ) {
+      if (!obstaclesEnabled) return false;
+
+      return obstacleColliders.some(obstacle => {
+        const dx = nextX - obstacle.x;
+        const dz = nextZ - obstacle.z;
+        return Math.hypot(dx, dz) < obstacle.radius;
+      });
+    }
+
+    function updateStepWarning() {
+      if (!isLocked || !currentMode) {
+        stepWarning.classList.remove("visible");
+        return;
+      }
+
+      const distanceToStep = Math.abs(Math.abs(camera.position.x) - STEP_EDGE_X);
+      const closeToStep = distanceToStep < STEP_WARNING_DISTANCE;
+      const movedAwayFromStep = distanceToStep > STEP_ALERT_RESET_DISTANCE;
+
+      if (currentMode === "wheelchair") {
+        stepWarning.textContent = "⚠ 앞에 15cm 단차가 있습니다. 휠체어는 통과할 수 없습니다.";
+
+        if (closeToStep && !hasPlayedApproachAlert) {
+          playApproachAlertSound();
+          hasPlayedApproachAlert = true;
+        }
+
+        if (movedAwayFromStep) {
+          hasPlayedApproachAlert = false;
+          hasPlayedBlockAlert = false;
+        }
+      } else {
+        stepWarning.textContent = "⚠ 주의! 인도와 도로 사이에 15cm 단차가 있습니다.";
+      }
+
+      stepWarning.classList.toggle("visible", closeToStep);
+    }
+
     let lastTime = performance.now();
+    let signalTime = 0;
+
+    function updateSignal(time) {
+      const phase = time % 12;
+      const vehicleGreen = phase < 7;
+      const vehicleYellow = phase >= 7 && phase < 9;
+
+      for (let i = 0; i < allSignalLights.length; i += 3) {
+        allSignalLights[i].color.set(vehicleGreen || vehicleYellow ? 0x550707 : 0xff1717);
+        allSignalLights[i].emissive.set(vehicleGreen || vehicleYellow ? 0x220000 : 0xff0000);
+
+        allSignalLights[i + 1].color.set(vehicleYellow ? 0xffba13 : 0x594000);
+        allSignalLights[i + 1].emissive.set(vehicleYellow ? 0xff8a00 : 0x1e1600);
+
+        allSignalLights[i + 2].color.set(vehicleGreen ? 0x0ce54c : 0x064b19);
+        allSignalLights[i + 2].emissive.set(vehicleGreen ? 0x00c83b : 0x001b08);
+      }
+
+      const pedestrianGo = !vehicleGreen && !vehicleYellow;
+      pedLightMat.color.set(pedestrianGo ? 0x28ed50 : 0x7c0909);
+      pedLightMat.emissive.set(pedestrianGo ? 0x00c530 : 0x3c0000);
+
+      signalStatus.textContent = pedestrianGo
+        ? "● 보행자 통행 가능"
+        : "● 보행자 정지";
+
+      signalStatus.style.color = pedestrianGo ? "#61ed82" : "#ff6767";
+    }
 
     function animate(now) {
       requestAnimationFrame(animate);
 
       const delta = Math.min((now - lastTime) / 1000, 0.05);
-      const time = now * 0.001;
       lastTime = now;
+      signalTime += delta;
 
-      if (locked) {
+      updateSignal(signalTime);
+
+      if (isLocked && currentMode) {
+        const speed = getMovementSpeed();
         const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
         const movement = new THREE.Vector3();
@@ -460,55 +1179,48 @@
         if (keys.KeyA) movement.sub(right);
 
         if (movement.lengthSq() > 0) {
-          movement.normalize().multiplyScalar(7 * delta);
-          camera.position.add(movement);
-          camera.position.x = THREE.MathUtils.clamp(camera.position.x, -45, 45);
-          camera.position.z = THREE.MathUtils.clamp(camera.position.z, -55, 55);
+          movement.normalize().multiplyScalar(speed * delta);
+
+          const nextX = THREE.MathUtils.clamp(camera.position.x + movement.x, -38, 38);
+          const nextZ = THREE.MathUtils.clamp(camera.position.z + movement.z, -88, 88);
+
+          const wheelchairBlocked =
+            currentMode === "wheelchair" &&
+            isWheelchairBlockedByStep(camera.position.x, nextX);
+
+          const obstacleBlocked = isBlockedByObstacle(nextX, nextZ);
+
+          if (wheelchairBlocked) {
+            camera.position.z = nextZ;
+
+            if (!hasPlayedBlockAlert) {
+              showBlockMessage("⛔ 휠체어는 15cm 단차를 통과할 수 없습니다.");
+              playBlockWarningSound();
+              hasPlayedBlockAlert = true;
+            }
+          } else if (obstacleBlocked) {
+            showBlockMessage("🚧 인도에 장애물이 있어 이동할 수 없습니다. 장애물 토글을 확인하세요.");
+          } else {
+            camera.position.x = nextX;
+            camera.position.z = nextZ;
+          }
         }
 
-        camera.position.y = 4.4 + Math.sin(time * 1.2) * 0.08;
+        camera.position.y = getWalkingSurfaceHeight(camera.position.x) + getEyeHeight();
       }
 
-      for (const school of fishSchools) {
-        const orbit = time * school.userData.speed + school.userData.offset;
-        school.position.x += Math.cos(orbit) * 0.0025;
-        school.position.z += Math.sin(orbit * 1.2) * 0.0025;
-        school.rotation.y = Math.sin(orbit) * 0.75;
-
-        school.children.forEach(fish => {
-          fish.rotation.y = Math.sin(time * fish.userData.speed + fish.userData.offset) * 0.65;
-          fish.position.y += Math.sin(time * 2 + fish.userData.offset) * 0.002;
-        });
-      }
-
-      for (const group of seaweedGroups) {
-        group.children.forEach(blade => {
-          blade.rotation.z = Math.sin(time * 1.7 + blade.userData.phase) * 0.16;
-        });
-      }
-
-      for (const bubble of bubbles) {
-        bubble.position.y += bubble.userData.speed * delta;
-        bubble.position.x += Math.sin(time + bubble.userData.drift) * 0.003;
-        if (bubble.position.y > 19) {
-          bubble.position.y = 0.2;
-          bubble.position.x = (Math.random() - 0.5) * 70;
-          bubble.position.z = (Math.random() - 0.5) * 90;
-        }
-      }
-
-      treasure.rotation.y += delta * 0.08;
-      depthLabel.textContent = `${(24 + Math.max(0, camera.position.z * -0.09)).toFixed(1)} m`;
-
+      updateStepWarning();
       renderer.render(scene, camera);
     }
 
-    addEventListener("resize", () => {
-      camera.aspect = innerWidth / innerHeight;
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
+      renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
+    updateHeightDisplay();
+    updateSpeedDisplay();
     animate(performance.now());
   </script>
 </body>
