@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 횡단보도 거리 시뮬레이터</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Pretendard", "Malgun Gothic", Arial, sans-serif;
+      background: #86c9ee;
+    }
+    canvas { display: block; }
+
+    #guide {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: min(440px, calc(100vw - 40px));
+      padding: 28px 32px;
+      color: white;
+      text-align: center;
+      background: rgba(12, 25, 41, 0.88);
+      border: 1px solid rgba(255,255,255,0.28);
+      border-radius: 18px;
+      box-shadow: 0 14px 45px rgba(0,0,0,0.28);
+      cursor: pointer;
+      transition: opacity .25s ease;
+      z-index: 10;
+    }
+    #guide.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #guide h1 {
+      margin: 0 0 14px;
+      font-size: 23px;
+    }
+    #guide p {
+      margin: 8px 0;
+      line-height: 1.65;
+      font-size: 15px;
+      color: #dcecff;
+    }
+    #guide strong {
+      color: #ffe67a;
+    }
+    #lockButton {
+      margin-top: 16px;
+      padding: 11px 22px;
+      border: 0;
+      border-radius: 9px;
+      color: #183148;
+      background: #ffdc54;
+      font-weight: 800;
+      font-size: 15px;
+      cursor: pointer;
+    }
+    #hud {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      color: #fff;
+      background: rgba(10, 25, 40, 0.68);
+      padding: 12px 16px;
+      border-radius: 10px;
+      line-height: 1.6;
+      font-size: 13px;
+      pointer-events: none;
+      z-index: 5;
+    }
+    #signalStatus {
+      color: #ff6767;
+      font-weight: 800;
+    }
+    #crosshair {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: 10px;
+      height: 10px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+      z-index: 4;
+    }
+    #crosshair::before, #crosshair::after {
+      content: "";
+      position: absolute;
+      background: rgba(255,255,255,0.95);
+      box-shadow: 0 0 2px #000;
+    }
+    #crosshair::before { width: 10px; height: 1px; top: 4px; left: 0; }
+    #crosshair::after { width: 1px; height: 10px; left: 4px; top: 0; }
+    body.playing #crosshair { opacity: 1; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.182.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.182.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="hud">
+    <strong>3D 횡단보도 거리</strong><br />
+    이동: <b>W A S D</b> &nbsp;|&nbsp; 시점: <b>마우스</b><br />
+    신호: <span id="signalStatus">● 보행자 정지</span>
+  </div>
+
+  <div id="crosshair"></div>
+
+  <div id="guide">
+    <h1>🚶 3D 거리 시뮬레이터</h1>
+    <p>화면을 클릭한 뒤 <strong>마우스</strong>로 주변을 둘러보세요.</p>
+    <p><strong>W A S D</strong> 키로 도로와 횡단보도 주변을 이동할 수 있습니다.</p>
+    <button id="lockButton">시작하기</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x8ccfee);
+    scene.fog = new THREE.Fog(0x8ccfee, 55, 155);
+
+    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
+    camera.position.set(0, 1.72, 20);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    document.body.appendChild(renderer.domElement);
+
+    const hemiLight = new THREE.HemisphereLight(0xdaf4ff, 0x5f7251, 2.2);
+    scene.add(hemiLight);
+
+    const sunLight = new THREE.DirectionalLight(0xfff1d0, 3.2);
+    sunLight.position.set(-35, 45, 25);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.camera.left = -65;
+    sunLight.shadow.camera.right = 65;
+    sunLight.shadow.camera.top = 65;
+    sunLight.shadow.camera.bottom = -65;
+    scene.add(sunLight);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(220, 220),
+      new THREE.MeshStandardMaterial({ color: 0x6c9258, roughness: 1 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    function mesh(geometry, material, x, y, z, cast = true, receive = true) {
+      const object = new THREE.Mesh(geometry, material);
+      object.position.set(x, y, z);
+      object.castShadow = cast;
+      object.receiveShadow = receive;
+      scene.add(object);
+      return object;
+    }
+
+    const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x30353a, roughness: 0.9 });
+    const sidewalkMaterial = new THREE.MeshStandardMaterial({ color: 0xb9b7ad, roughness: 0.95 });
+    const curbMaterial = new THREE.MeshStandardMaterial({ color: 0xdfdfd8, roughness: 0.8 });
+    const lineMaterial = new THREE.MeshStandardMaterial({ color: 0xffd83d, roughness: 0.72 });
+    const whiteMaterial = new THREE.MeshStandardMaterial({ color: 0xf7f7f1, roughness: 0.75 });
+
+    mesh(new THREE.BoxGeometry(16, 0.18, 180), roadMaterial, 0, 0.03, 0);
+    mesh(new THREE.BoxGeometry(5, 0.16, 180), sidewalkMaterial, -10.5, 0.04, 0);
+    mesh(new THREE.BoxGeometry(5, 0.16, 180), sidewalkMaterial, 10.5, 0.04, 0);
+
+    mesh(new THREE.BoxGeometry(0.35, 0.28, 180), curbMaterial, -8.15, 0.12, 0);
+    mesh(new THREE.BoxGeometry(0.35, 0.28, 180), curbMaterial, 8.15, 0.12, 0);
+
+    for (let z = -82; z <= 82; z += 9) {
+      if (Math.abs(z) < 8) continue;
+      mesh(new THREE.BoxGeometry(0.22, 0.03, 4.5), lineMaterial, 0, 0.15, z, false);
+    }
+
+    for (let x = -6.9; x <= 6.9; x += 1.55) {
+      mesh(new THREE.BoxGeometry(0.92, 0.055, 7.1), whiteMaterial, x, 0.16, 0, false);
+    }
+
+    function createBuilding(x, z, width, height, depth, color) {
+      const building = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshStandardMaterial({ color, roughness: 0.82 })
+      );
+      body.position.y = height / 2 + 0.12;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      building.add(body);
+
+      const roof = new THREE.Mesh(
+        new THREE.BoxGeometry(width + 0.25, 0.35, depth + 0.25),
+        new THREE.MeshStandardMaterial({ color: 0x424850, roughness: 0.8 })
+      );
+      roof.position.y = height + 0.3;
+      roof.castShadow = true;
+      building.add(roof);
+
+      const windowMat = new THREE.MeshStandardMaterial({
+        color: 0x7dc3da,
+        emissive: 0x143040,
+        emissiveIntensity: 0.25,
+        roughness: 0.35,
+        metalness: 0.15
+      });
+
+      const rows = Math.max(2, Math.floor(height / 2.7));
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < 3; col++) {
+          const win = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.08), windowMat);
+          win.position.set(-width / 2 + 1.15 + col * ((width - 2.3) / 2), 1.6 + row * 2.35, depth / 2 + 0.045);
+          building.add(win);
+        }
+      }
+
+      building.position.set(x, 0, z);
+      scene.add(building);
+    }
+
+    const buildingColors = [0xd8876d, 0xe3bd68, 0x798db3, 0xa97b92, 0x77a690, 0xc98361];
+    const buildingZ = [-62, -43, -25, 22, 42, 62];
+
+    buildingZ.forEach((z, i) => {
+      createBuilding(-15.5, z, 7 + (i % 2), 11 + (i % 3) * 3, 11, buildingColors[i]);
+      createBuilding(15.5, z + 4, 7 + ((i + 1) % 2), 12 + ((i + 2) % 3) * 3, 11, buildingColors[(i + 2) % buildingColors.length]);
+    });
+
+    function createTree(x, z) {
+      const tree = new THREE.Group();
+      const trunk = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.18, 0.26, 2.2, 10),
+        new THREE.MeshStandardMaterial({ color: 0x795233, roughness: 1 })
+      );
+      trunk.position.y = 1.15;
+      trunk.castShadow = true;
+      tree.add(trunk);
+
+      const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f7b42, roughness: 0.95 });
+      const crown1 = new THREE.Mesh(new THREE.SphereGeometry(1.18, 12, 10), leafMat);
+      crown1.position.set(0, 2.85, 0);
+      crown1.castShadow = true;
+      tree.add(crown1);
+
+      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.88, 12, 10), leafMat);
+      crown2.position.set(0.45, 3.3, 0.1);
+      crown2.castShadow = true;
+      tree.add(crown2);
+
+      tree.position.set(x, 0.12, z);
+      scene.add(tree);
+    }
+
+    [-72, -55, -37, -19, -10, 10, 20, 38, 56, 74].forEach(z => {
+      createTree(-10.5, z);
+      createTree(10.5, z + 3);
+    });
+
+    function createSignal(x, z, side) {
+      const signal = new THREE.Group();
+      const poleMat = new THREE.MeshStandardMaterial({ color: 0x3c4144, metalness: 0.55, roughness: 0.45 });
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 4.3, 12), poleMat);
+      pole.position.y = 2.15;
+      pole.castShadow = true;
+      signal.add(pole);
+
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.15, 16), poleMat);
+      base.position.y = 0.08;
+      signal.add(base);
+
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(0.85, 1.75, 0.48),
+        new THREE.MeshStandardMaterial({ color: 0x202426, roughness: 0.65 })
+      );
+      box.position.set(0, 3.55, 0);
+      box.castShadow = true;
+      signal.add(box);
+
+      const redMat = new THREE.MeshStandardMaterial({ color: 0x550707, emissive: 0x220000 });
+      const yellowMat = new THREE.MeshStandardMaterial({ color: 0x594000, emissive: 0x1e1600 });
+      const greenMat = new THREE.MeshStandardMaterial({ color: 0x064b19, emissive: 0x001b08 });
+
+      const lights = [];
+      [redMat, yellowMat, greenMat].forEach((mat, index) => {
+        const light = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 12), mat);
+        light.position.set(0, 4.05 - index * 0.55, 0.27 * side);
+        signal.add(light);
+        lights.push(mat);
+      });
+
+      signal.position.set(x, 0, z);
+      scene.add(signal);
+      return lights;
+    }
+
+    const allSignalLights = [
+      ...createSignal(-8.9, 4.6, 1),
+      ...createSignal(8.9, -4.6, -1)
+    ];
+
+    const pedestrianPole = new THREE.Group();
+    const pedPoleMat = new THREE.MeshStandardMaterial({ color: 0x42474a, metalness: 0.5, roughness: 0.4 });
+    const pedPole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 3.3, 10), pedPoleMat);
+    pedPole.position.y = 1.65;
+    pedestrianPole.add(pedPole);
+
+    const pedBox = new THREE.Mesh(
+      new THREE.BoxGeometry(0.68, 1.05, 0.32),
+      new THREE.MeshStandardMaterial({ color: 0x1d2224 })
+    );
+    pedBox.position.y = 3.02;
+    pedestrianPole.add(pedBox);
+
+    const pedLightMat = new THREE.MeshStandardMaterial({
+      color: 0x7c0909,
+      emissive: 0x3c0000,
+      emissiveIntensity: 1
+    });
+    const pedLight = new THREE.Mesh(new THREE.CircleGeometry(0.19, 20), pedLightMat);
+    pedLight.position.set(0, 3.04, 0.165);
+    pedestrianPole.add(pedLight);
+    pedestrianPole.position.set(-8.85, 0, -4.8);
+    scene.add(pedestrianPole);
+
+    const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false };
+    let yaw = 0;
+    let pitch = 0;
+    let isLocked = false;
+    const guide = document.getElementById("guide");
+    const lockButton = document.getElementById("lockButton");
+    const signalStatus = document.getElementById("signalStatus");
+
+    function lockPointer() {
+      renderer.domElement.requestPointerLock();
+    }
+
+    lockButton.addEventListener("click", lockPointer);
+    guide.addEventListener("click", lockPointer);
+
+    document.addEventListener("pointerlockchange", () => {
+      isLocked = document.pointerLockElement === renderer.domElement;
+      document.body.classList.toggle("playing", isLocked);
+      guide.classList.toggle("hidden", isLocked);
+    });
+
+    document.addEventListener("mousemove", event => {
+      if (!isLocked) return;
+      yaw -= event.movementX * 0.0023;
+      pitch -= event.movementY * 0.0023;
+      pitch = Math.max(-1.35, Math.min(1.35, pitch));
+      camera.rotation.set(pitch, yaw, 0, "YXZ");
+    });
+
+    window.addEventListener("keydown", event => {
+      if (keys.hasOwnProperty(event.code)) {
+        keys[event.code] = true;
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener("keyup", event => {
+      if (keys.hasOwnProperty(event.code)) keys[event.code] = false;
+    });
+
+    let lastTime = performance.now();
+    let signalTime = 0;
+
+    function updateSignal(time) {
+      const phase = time % 12;
+      const vehicleGreen = phase < 7;
+      const vehicleYellow = phase >= 7 && phase < 9;
+
+      for (let i = 0; i < allSignalLights.length; i += 3) {
+        allSignalLights[i].color.set(vehicleGreen || vehicleYellow ? 0x550707 : 0xff1717);
+        allSignalLights[i].emissive.set(vehicleGreen || vehicleYellow ? 0x220000 : 0xff0000);
+        allSignalLights[i + 1].color.set(vehicleYellow ? 0xffba13 : 0x594000);
+        allSignalLights[i + 1].emissive.set(vehicleYellow ? 0xff8a00 : 0x1e1600);
+        allSignalLights[i + 2].color.set(vehicleGreen ? 0x0ce54c : 0x064b19);
+        allSignalLights[i + 2].emissive.set(vehicleGreen ? 0x00c83b : 0x001b08);
+      }
+
+      const pedestrianGo = !vehicleGreen && !vehicleYellow;
+      pedLightMat.color.set(pedestrianGo ? 0x28ed50 : 0x7c0909);
+      pedLightMat.emissive.set(pedestrianGo ? 0x00c530 : 0x3c0000);
+      signalStatus.textContent = pedestrianGo ? "● 보행자 통행 가능" : "● 보행자 정지";
+      signalStatus.style.color = pedestrianGo ? "#61ed82" : "#ff6767";
+    }
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const delta = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      signalTime += delta;
+      updateSignal(signalTime);
+
+      if (isLocked) {
+        const speed = 7.2;
+        const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+        const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+        const movement = new THREE.Vector3();
+
+        if (keys.KeyW) movement.add(forward);
+        if (keys.KeyS) movement.sub(forward);
+        if (keys.KeyD) movement.add(right);
+        if (keys.KeyA) movement.sub(right);
+
+        if (movement.lengthSq() > 0) {
+          movement.normalize().multiplyScalar(speed * delta);
+          camera.position.add(movement);
+          camera.position.x = THREE.MathUtils.clamp(camera.position.x, -38, 38);
+          camera.position.z = THREE.MathUtils.clamp(camera.position.z, -88, 88);
+          camera.position.y = 1.72;
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate(performance.now());
+  </script>
+</body>
+</html>
