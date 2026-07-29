@@ -3,101 +3,112 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D 횡단보도 거리 시뮬레이터</title>
+  <title>심해 산호초 탐험 시뮬레이터</title>
   <style>
     * { box-sizing: border-box; }
     html, body {
-      margin: 0;
       width: 100%;
       height: 100%;
+      margin: 0;
       overflow: hidden;
-      font-family: "Pretendard", "Malgun Gothic", Arial, sans-serif;
-      background: #86c9ee;
+      background: #061a31;
+      font-family: Arial, "Malgun Gothic", sans-serif;
     }
     canvas { display: block; }
 
-    #guide {
+    #intro {
       position: fixed;
+      z-index: 10;
       left: 50%;
       top: 50%;
+      width: min(460px, calc(100vw - 36px));
       transform: translate(-50%, -50%);
-      width: min(440px, calc(100vw - 40px));
-      padding: 28px 32px;
-      color: white;
+      padding: 30px;
       text-align: center;
-      background: rgba(12, 25, 41, 0.88);
-      border: 1px solid rgba(255,255,255,0.28);
-      border-radius: 18px;
-      box-shadow: 0 14px 45px rgba(0,0,0,0.28);
-      cursor: pointer;
+      color: #effdff;
+      background: rgba(3, 19, 40, 0.9);
+      border: 1px solid rgba(116, 229, 255, 0.42);
+      border-radius: 20px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.45);
       transition: opacity .25s ease;
-      z-index: 10;
     }
-    #guide.hidden {
+    #intro.hidden {
       opacity: 0;
       pointer-events: none;
     }
-    #guide h1 {
-      margin: 0 0 14px;
-      font-size: 23px;
+    #intro h1 {
+      margin: 0 0 12px;
+      color: #7eeeff;
+      font-size: 25px;
     }
-    #guide p {
+    #intro p {
       margin: 8px 0;
+      color: #d4f3fc;
       line-height: 1.65;
       font-size: 15px;
-      color: #dcecff;
     }
-    #guide strong {
-      color: #ffe67a;
-    }
-    #lockButton {
+    #startButton {
       margin-top: 16px;
-      padding: 11px 22px;
+      padding: 12px 24px;
       border: 0;
       border-radius: 9px;
-      color: #183148;
-      background: #ffdc54;
-      font-weight: 800;
+      color: #062139;
+      background: #6de8f6;
+      font-weight: bold;
       font-size: 15px;
       cursor: pointer;
     }
     #hud {
       position: fixed;
+      z-index: 4;
       top: 16px;
       left: 16px;
-      color: #fff;
-      background: rgba(10, 25, 40, 0.68);
-      padding: 12px 16px;
-      border-radius: 10px;
-      line-height: 1.6;
+      padding: 12px 15px;
+      color: #dffaff;
+      background: rgba(3, 21, 43, 0.7);
+      border-left: 3px solid #65eaf8;
+      border-radius: 0 10px 10px 0;
+      line-height: 1.65;
       font-size: 13px;
       pointer-events: none;
-      z-index: 5;
     }
-    #signalStatus {
-      color: #ff6767;
-      font-weight: 800;
+    #depth {
+      color: #79f5c8;
+      font-weight: bold;
     }
     #crosshair {
       position: fixed;
+      z-index: 3;
       left: 50%;
       top: 50%;
-      width: 10px;
-      height: 10px;
+      width: 14px;
+      height: 14px;
       transform: translate(-50%, -50%);
-      pointer-events: none;
       opacity: 0;
-      z-index: 4;
+      pointer-events: none;
     }
     #crosshair::before, #crosshair::after {
       content: "";
       position: absolute;
-      background: rgba(255,255,255,0.95);
-      box-shadow: 0 0 2px #000;
+      background: rgba(218, 255, 255, 0.9);
+      box-shadow: 0 0 5px #3eefff;
     }
-    #crosshair::before { width: 10px; height: 1px; top: 4px; left: 0; }
-    #crosshair::after { width: 1px; height: 10px; left: 4px; top: 0; }
+    #crosshair::before { width: 14px; height: 1px; top: 6px; }
+    #crosshair::after { width: 1px; height: 14px; left: 6px; }
     body.playing #crosshair { opacity: 1; }
+
+    #legend {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 4;
+      padding: 9px 13px;
+      color: #d9f7ff;
+      background: rgba(3, 21, 43, 0.62);
+      border-radius: 9px;
+      font-size: 12px;
+      pointer-events: none;
+    }
   </style>
 
   <script type="importmap">
@@ -110,309 +121,335 @@
   </script>
 </head>
 <body>
+  <section id="intro">
+    <h1>🌊 심해 산호초 탐험</h1>
+    <p>빛이 스며드는 해저 산호초 사이를 탐험해 보세요.</p>
+    <p><b>마우스</b>: 시점 이동<br><b>W A S D</b>: 잠수정 이동</p>
+    <button id="startButton">탐험 시작</button>
+  </section>
+
   <div id="hud">
-    <strong>3D 횡단보도 거리</strong><br />
-    이동: <b>W A S D</b> &nbsp;|&nbsp; 시점: <b>마우스</b><br />
-    신호: <span id="signalStatus">● 보행자 정지</span>
+    <strong>DEEP SEA EXPLORER</strong><br>
+    이동: W A S D &nbsp;|&nbsp; 시점: 마우스<br>
+    수심: <span id="depth">24.0 m</span>
   </div>
-
+  <div id="legend">🐠 산호초 생태 관찰 구역</div>
   <div id="crosshair"></div>
-
-  <div id="guide">
-    <h1>냐냐냐냐냐 🚶 3D 거리 시뮬레이터</h1>
-    <p>화면을 클릭한 뒤 <strong>마우스</strong>로 주변을 둘러보세요.</p>
-    <p><strong>W A S D</strong> 키로 도로와 횡단보도 주변을 이동할 수 있습니다.</p>
-    <button id="lockButton">시작하기</button>
-  </div>
 
   <script type="module">
     import * as THREE from "three";
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x8ccfee);
-    scene.fog = new THREE.Fog(0x8ccfee, 55, 155);
+    scene.background = new THREE.Color(0x062c52);
+    scene.fog = new THREE.FogExp2(0x063359, 0.021);
 
-    const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 300);
-    camera.position.set(0, 1.72, 20);
+    const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 220);
+    camera.position.set(0, 4.4, 22);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
-    const hemiLight = new THREE.HemisphereLight(0xdaf4ff, 0x5f7251, 2.2);
-    scene.add(hemiLight);
+    const ambient = new THREE.HemisphereLight(0x3fc8ff, 0x052010, 2.2);
+    scene.add(ambient);
 
-    const sunLight = new THREE.DirectionalLight(0xfff1d0, 3.2);
-    sunLight.position.set(-35, 45, 25);
-    sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
-    sunLight.shadow.camera.left = -65;
-    sunLight.shadow.camera.right = 65;
-    sunLight.shadow.camera.top = 65;
-    sunLight.shadow.camera.bottom = -65;
-    scene.add(sunLight);
+    const sunlight = new THREE.DirectionalLight(0x9eefff, 3.5);
+    sunlight.position.set(-18, 30, 12);
+    sunlight.castShadow = true;
+    sunlight.shadow.mapSize.set(2048, 2048);
+    sunlight.shadow.camera.left = -40;
+    sunlight.shadow.camera.right = 40;
+    sunlight.shadow.camera.top = 40;
+    sunlight.shadow.camera.bottom = -40;
+    scene.add(sunlight);
 
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(220, 220),
-      new THREE.MeshStandardMaterial({ color: 0x6c9258, roughness: 1 })
+    const oceanFloorMaterial = new THREE.MeshStandardMaterial({
+      color: 0x9a8059,
+      roughness: 1,
+      metalness: 0
+    });
+
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(190, 190, 50, 50),
+      oceanFloorMaterial
     );
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    scene.add(ground);
+    floor.rotation.x = -Math.PI / 2;
 
-    function mesh(geometry, material, x, y, z, cast = true, receive = true) {
-      const object = new THREE.Mesh(geometry, material);
-      object.position.set(x, y, z);
-      object.castShadow = cast;
-      object.receiveShadow = receive;
-      scene.add(object);
-      return object;
+    const floorPosition = floor.geometry.attributes.position;
+    for (let i = 0; i < floorPosition.count; i++) {
+      const x = floorPosition.getX(i);
+      const y = floorPosition.getY(i);
+      const height = Math.sin(x * 0.22) * 0.22 + Math.cos(y * 0.18) * 0.18 + (Math.random() - 0.5) * 0.12;
+      floorPosition.setZ(i, height);
     }
+    floor.geometry.computeVertexNormals();
+    floor.receiveShadow = true;
+    scene.add(floor);
 
-    const roadMaterial = new THREE.MeshStandardMaterial({ color: 0x30353a, roughness: 0.9 });
-    const sidewalkMaterial = new THREE.MeshStandardMaterial({ color: 0xb9b7ad, roughness: 0.95 });
-    const curbMaterial = new THREE.MeshStandardMaterial({ color: 0xdfdfd8, roughness: 0.8 });
-    const lineMaterial = new THREE.MeshStandardMaterial({ color: 0xffd83d, roughness: 0.72 });
-    const whiteMaterial = new THREE.MeshStandardMaterial({ color: 0xf7f7f1, roughness: 0.75 });
-
-    mesh(new THREE.BoxGeometry(16, 0.18, 180), roadMaterial, 0, 0.03, 0);
-    mesh(new THREE.BoxGeometry(5, 0.16, 180), sidewalkMaterial, -10.5, 0.04, 0);
-    mesh(new THREE.BoxGeometry(5, 0.16, 180), sidewalkMaterial, 10.5, 0.04, 0);
-
-    mesh(new THREE.BoxGeometry(0.35, 0.28, 180), curbMaterial, -8.15, 0.12, 0);
-    mesh(new THREE.BoxGeometry(0.35, 0.28, 180), curbMaterial, 8.15, 0.12, 0);
-
-    for (let z = -82; z <= 82; z += 9) {
-      if (Math.abs(z) < 8) continue;
-      mesh(new THREE.BoxGeometry(0.22, 0.03, 4.5), lineMaterial, 0, 0.15, z, false);
-    }
-
-    for (let x = -6.9; x <= 6.9; x += 1.55) {
-      mesh(new THREE.BoxGeometry(0.92, 0.055, 7.1), whiteMaterial, x, 0.16, 0, false);
-    }
-
-    function createBuilding(x, z, width, height, depth, color) {
-      const building = new THREE.Group();
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(width, height, depth),
-        new THREE.MeshStandardMaterial({ color, roughness: 0.82 })
-      );
-      body.position.y = height / 2 + 0.12;
-      body.castShadow = true;
-      body.receiveShadow = true;
-      building.add(body);
-
-      const roof = new THREE.Mesh(
-        new THREE.BoxGeometry(width + 0.25, 0.35, depth + 0.25),
-        new THREE.MeshStandardMaterial({ color: 0x424850, roughness: 0.8 })
-      );
-      roof.position.y = height + 0.3;
-      roof.castShadow = true;
-      building.add(roof);
-
-      const windowMat = new THREE.MeshStandardMaterial({
-        color: 0x7dc3da,
-        emissive: 0x143040,
-        emissiveIntensity: 0.25,
-        roughness: 0.35,
-        metalness: 0.15
-      });
-
-      const rows = Math.max(2, Math.floor(height / 2.7));
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < 3; col++) {
-          const win = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.85, 0.08), windowMat);
-          win.position.set(-width / 2 + 1.15 + col * ((width - 2.3) / 2), 1.6 + row * 2.35, depth / 2 + 0.045);
-          building.add(win);
-        }
-      }
-
-      building.position.set(x, 0, z);
-      scene.add(building);
-    }
-
-    const buildingColors = [0xd8876d, 0xe3bd68, 0x798db3, 0xa97b92, 0x77a690, 0xc98361];
-    const buildingZ = [-62, -43, -25, 22, 42, 62];
-
-    buildingZ.forEach((z, i) => {
-      createBuilding(-15.5, z, 7 + (i % 2), 11 + (i % 3) * 3, 11, buildingColors[i]);
-      createBuilding(15.5, z + 4, 7 + ((i + 1) % 2), 12 + ((i + 2) % 3) * 3, 11, buildingColors[(i + 2) % buildingColors.length]);
-    });
-
-    function createTree(x, z) {
-      const tree = new THREE.Group();
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.18, 0.26, 2.2, 10),
-        new THREE.MeshStandardMaterial({ color: 0x795233, roughness: 1 })
-      );
-      trunk.position.y = 1.15;
-      trunk.castShadow = true;
-      tree.add(trunk);
-
-      const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f7b42, roughness: 0.95 });
-      const crown1 = new THREE.Mesh(new THREE.SphereGeometry(1.18, 12, 10), leafMat);
-      crown1.position.set(0, 2.85, 0);
-      crown1.castShadow = true;
-      tree.add(crown1);
-
-      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.88, 12, 10), leafMat);
-      crown2.position.set(0.45, 3.3, 0.1);
-      crown2.castShadow = true;
-      tree.add(crown2);
-
-      tree.position.set(x, 0.12, z);
-      scene.add(tree);
-    }
-
-    [-72, -55, -37, -19, -10, 10, 20, 38, 56, 74].forEach(z => {
-      createTree(-10.5, z);
-      createTree(10.5, z + 3);
-    });
-
-    function createSignal(x, z, side) {
-      const signal = new THREE.Group();
-      const poleMat = new THREE.MeshStandardMaterial({ color: 0x3c4144, metalness: 0.55, roughness: 0.45 });
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 4.3, 12), poleMat);
-      pole.position.y = 2.15;
-      pole.castShadow = true;
-      signal.add(pole);
-
-      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.48, 0.15, 16), poleMat);
-      base.position.y = 0.08;
-      signal.add(base);
-
-      const box = new THREE.Mesh(
-        new THREE.BoxGeometry(0.85, 1.75, 0.48),
-        new THREE.MeshStandardMaterial({ color: 0x202426, roughness: 0.65 })
-      );
-      box.position.set(0, 3.55, 0);
-      box.castShadow = true;
-      signal.add(box);
-
-      const redMat = new THREE.MeshStandardMaterial({ color: 0x550707, emissive: 0x220000 });
-      const yellowMat = new THREE.MeshStandardMaterial({ color: 0x594000, emissive: 0x1e1600 });
-      const greenMat = new THREE.MeshStandardMaterial({ color: 0x064b19, emissive: 0x001b08 });
-
-      const lights = [];
-      [redMat, yellowMat, greenMat].forEach((mat, index) => {
-        const light = new THREE.Mesh(new THREE.SphereGeometry(0.23, 16, 12), mat);
-        light.position.set(0, 4.05 - index * 0.55, 0.27 * side);
-        signal.add(light);
-        lights.push(mat);
-      });
-
-      signal.position.set(x, 0, z);
-      scene.add(signal);
-      return lights;
-    }
-
-    const allSignalLights = [
-      ...createSignal(-8.9, 4.6, 1),
-      ...createSignal(8.9, -4.6, -1)
+    const rockMaterials = [
+      new THREE.MeshStandardMaterial({ color: 0x53595e, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: 0x705e4b, roughness: 1 }),
+      new THREE.MeshStandardMaterial({ color: 0x44585b, roughness: 1 })
     ];
 
-    const pedestrianPole = new THREE.Group();
-    const pedPoleMat = new THREE.MeshStandardMaterial({ color: 0x42474a, metalness: 0.5, roughness: 0.4 });
-    const pedPole = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 3.3, 10), pedPoleMat);
-    pedPole.position.y = 1.65;
-    pedestrianPole.add(pedPole);
+    function createRock(x, z, scale) {
+      const rock = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(1, 1),
+        rockMaterials[Math.floor(Math.random() * rockMaterials.length)]
+      );
+      rock.position.set(x, 0.4 * scale, z);
+      rock.scale.set(scale * (0.8 + Math.random() * 0.5), scale * 0.7, scale);
+      rock.rotation.set(Math.random(), Math.random(), Math.random());
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      scene.add(rock);
+    }
 
-    const pedBox = new THREE.Mesh(
-      new THREE.BoxGeometry(0.68, 1.05, 0.32),
-      new THREE.MeshStandardMaterial({ color: 0x1d2224 })
+    for (let i = 0; i < 80; i++) {
+      const x = (Math.random() - 0.5) * 90;
+      const z = (Math.random() - 0.5) * 110;
+      if (Math.abs(x) < 8 && Math.abs(z) < 14) continue;
+      createRock(x, z, 0.25 + Math.random() * 1.25);
+    }
+
+    const coralMaterials = [
+      new THREE.MeshStandardMaterial({ color: 0xff6a8c, roughness: 0.75 }),
+      new THREE.MeshStandardMaterial({ color: 0xffa64d, roughness: 0.75 }),
+      new THREE.MeshStandardMaterial({ color: 0xae75f3, roughness: 0.75 }),
+      new THREE.MeshStandardMaterial({ color: 0xef3f70, roughness: 0.75 }),
+      new THREE.MeshStandardMaterial({ color: 0x55d6bb, roughness: 0.75 })
+    ];
+
+    function createCoral(x, z, scale = 1) {
+      const group = new THREE.Group();
+      const material = coralMaterials[Math.floor(Math.random() * coralMaterials.length)];
+      const branches = 4 + Math.floor(Math.random() * 4);
+
+      for (let i = 0; i < branches; i++) {
+        const height = (1.0 + Math.random() * 1.8) * scale;
+        const branch = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.09 * scale, 0.18 * scale, height, 8),
+          material
+        );
+        const angle = (i / branches) * Math.PI * 2 + Math.random() * 0.45;
+        const distance = Math.random() * 0.4 * scale;
+        branch.position.set(Math.cos(angle) * distance, height / 2, Math.sin(angle) * distance);
+        branch.rotation.z = Math.cos(angle) * (0.12 + Math.random() * 0.22);
+        branch.rotation.x = Math.sin(angle) * (0.12 + Math.random() * 0.22);
+        branch.castShadow = true;
+        group.add(branch);
+
+        const tip = new THREE.Mesh(
+          new THREE.SphereGeometry(0.17 * scale, 10, 8),
+          material
+        );
+        tip.position.copy(branch.position);
+        tip.position.y += height / 2 - 0.05;
+        tip.castShadow = true;
+        group.add(tip);
+      }
+
+      group.position.set(x, 0.12, z);
+      scene.add(group);
+    }
+
+    function createSeaweed(x, z, height) {
+      const group = new THREE.Group();
+      const material = new THREE.MeshStandardMaterial({
+        color: Math.random() > 0.5 ? 0x247f56 : 0x4caa62,
+        roughness: 0.9,
+        side: THREE.DoubleSide
+      });
+
+      for (let i = 0; i < 4; i++) {
+        const blade = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.24, height * (0.7 + Math.random() * 0.4), 1, 6),
+          material
+        );
+        blade.position.set((Math.random() - 0.5) * 0.45, blade.geometry.parameters.height / 2, (Math.random() - 0.5) * 0.45);
+        blade.rotation.y = Math.random() * Math.PI;
+        blade.userData.phase = Math.random() * Math.PI * 2;
+        group.add(blade);
+      }
+      group.position.set(x, 0.12, z);
+      group.userData.seaweed = true;
+      scene.add(group);
+      return group;
+    }
+
+    const seaweedGroups = [];
+    for (let i = 0; i < 55; i++) {
+      const x = (Math.random() - 0.5) * 76;
+      const z = (Math.random() - 0.5) * 92;
+      seaweedGroups.push(createSeaweed(x, z, 1 + Math.random() * 2.8));
+    }
+
+    [
+      [-8, 3, 1.5], [7, -4, 1.7], [-16, -16, 1.3], [14, 15, 1.6],
+      [-22, 9, 1.2], [23, -10, 1.5], [4, -24, 1.3], [-5, 24, 1.4],
+      [28, 26, 1.5], [-29, -28, 1.7], [20, -34, 1.4], [-22, 35, 1.4]
+    ].forEach(([x, z, s]) => createCoral(x, z, s));
+
+    const fishMaterials = [
+      new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.55 }),
+      new THREE.MeshStandardMaterial({ color: 0x49d8ff, roughness: 0.55 }),
+      new THREE.MeshStandardMaterial({ color: 0xff719b, roughness: 0.55 }),
+      new THREE.MeshStandardMaterial({ color: 0x9ef06b, roughness: 0.55 })
+    ];
+
+    const fishSchools = [];
+
+    function createFishSchool(centerX, centerY, centerZ, count) {
+      const school = new THREE.Group();
+
+      for (let i = 0; i < count; i++) {
+        const fish = new THREE.Group();
+        const mat = fishMaterials[Math.floor(Math.random() * fishMaterials.length)];
+
+        const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 8), mat);
+        body.scale.set(1.6, 0.75, 0.72);
+        fish.add(body);
+
+        const tail = new THREE.Mesh(
+          new THREE.ConeGeometry(0.25, 0.48, 4),
+          mat
+        );
+        tail.rotation.z = -Math.PI / 2;
+        tail.position.x = -0.55;
+        fish.add(tail);
+
+        fish.position.set(
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 3,
+          (Math.random() - 0.5) * 6
+        );
+        fish.userData.offset = Math.random() * Math.PI * 2;
+        fish.userData.speed = 0.35 + Math.random() * 0.4;
+        school.add(fish);
+      }
+
+      school.position.set(centerX, centerY, centerZ);
+      school.userData.radius = 3 + Math.random() * 3;
+      school.userData.speed = 0.16 + Math.random() * 0.12;
+      school.userData.offset = Math.random() * Math.PI * 2;
+      scene.add(school);
+      fishSchools.push(school);
+    }
+
+    createFishSchool(-8, 5.5, -6, 17);
+    createFishSchool(14, 7, -22, 14);
+    createFishSchool(-18, 6, 17, 12);
+    createFishSchool(8, 4, 29, 16);
+
+    const treasure = new THREE.Group();
+    const chestBase = new THREE.Mesh(
+      new THREE.BoxGeometry(2.1, 1, 1.25),
+      new THREE.MeshStandardMaterial({ color: 0x70401b, roughness: 0.75 })
     );
-    pedBox.position.y = 3.02;
-    pedestrianPole.add(pedBox);
+    chestBase.position.y = 0.6;
+    chestBase.castShadow = true;
+    treasure.add(chestBase);
 
-    const pedLightMat = new THREE.MeshStandardMaterial({
-      color: 0x7c0909,
-      emissive: 0x3c0000,
-      emissiveIntensity: 1
+    const chestTop = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.05, 1.05, 1.25, 16, 1, false, 0, Math.PI),
+      new THREE.MeshStandardMaterial({ color: 0x8e5725, roughness: 0.7 })
+    );
+    chestTop.rotation.z = Math.PI / 2;
+    chestTop.position.set(0, 1.08, 0);
+    chestTop.castShadow = true;
+    treasure.add(chestTop);
+
+    const gold = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 1.3, 1.3),
+      new THREE.MeshStandardMaterial({ color: 0xffcf3d, metalness: 0.7, roughness: 0.3 })
+    );
+    gold.position.set(0, 0.85, 0.02);
+    treasure.add(gold);
+
+    treasure.position.set(-4, 0.15, -14);
+    treasure.rotation.y = 0.35;
+    scene.add(treasure);
+
+    const bubbles = [];
+    const bubbleMaterial = new THREE.MeshBasicMaterial({
+      color: 0xa7efff,
+      transparent: true,
+      opacity: 0.35
     });
-    const pedLight = new THREE.Mesh(new THREE.CircleGeometry(0.19, 20), pedLightMat);
-    pedLight.position.set(0, 3.04, 0.165);
-    pedestrianPole.add(pedLight);
-    pedestrianPole.position.set(-8.85, 0, -4.8);
-    scene.add(pedestrianPole);
 
-    const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false };
+    for (let i = 0; i < 170; i++) {
+      const bubble = new THREE.Mesh(
+        new THREE.SphereGeometry(0.025 + Math.random() * 0.07, 8, 8),
+        bubbleMaterial
+      );
+      bubble.position.set(
+        (Math.random() - 0.5) * 70,
+        Math.random() * 18,
+        (Math.random() - 0.5) * 90
+      );
+      bubble.userData.speed = 0.3 + Math.random() * 0.7;
+      bubble.userData.drift = Math.random() * Math.PI * 2;
+      scene.add(bubble);
+      bubbles.push(bubble);
+    }
+
+    const intro = document.getElementById("intro");
+    const startButton = document.getElementById("startButton");
+    const depthLabel = document.getElementById("depth");
+
+    let locked = false;
     let yaw = 0;
-    let pitch = 0;
-    let isLocked = false;
-    const guide = document.getElementById("guide");
-    const lockButton = document.getElementById("lockButton");
-    const signalStatus = document.getElementById("signalStatus");
+    let pitch = -0.08;
+    const keys = { KeyW: false, KeyA: false, KeyS: false, KeyD: false };
 
-    function lockPointer() {
+    function startExploration() {
       renderer.domElement.requestPointerLock();
     }
 
-    lockButton.addEventListener("click", lockPointer);
-    guide.addEventListener("click", lockPointer);
+    startButton.addEventListener("click", startExploration);
+    intro.addEventListener("click", event => {
+      if (event.target !== startButton) startExploration();
+    });
 
     document.addEventListener("pointerlockchange", () => {
-      isLocked = document.pointerLockElement === renderer.domElement;
-      document.body.classList.toggle("playing", isLocked);
-      guide.classList.toggle("hidden", isLocked);
+      locked = document.pointerLockElement === renderer.domElement;
+      intro.classList.toggle("hidden", locked);
+      document.body.classList.toggle("playing", locked);
     });
 
     document.addEventListener("mousemove", event => {
-      if (!isLocked) return;
-      yaw -= event.movementX * 0.0023;
-      pitch -= event.movementY * 0.0023;
-      pitch = Math.max(-1.35, Math.min(1.35, pitch));
+      if (!locked) return;
+      yaw -= event.movementX * 0.0024;
+      pitch -= event.movementY * 0.0022;
+      pitch = THREE.MathUtils.clamp(pitch, -0.85, 0.65);
       camera.rotation.set(pitch, yaw, 0, "YXZ");
     });
 
-    window.addEventListener("keydown", event => {
-      if (keys.hasOwnProperty(event.code)) {
+    addEventListener("keydown", event => {
+      if (event.code in keys) {
         keys[event.code] = true;
         event.preventDefault();
       }
     });
 
-    window.addEventListener("keyup", event => {
-      if (keys.hasOwnProperty(event.code)) keys[event.code] = false;
+    addEventListener("keyup", event => {
+      if (event.code in keys) keys[event.code] = false;
     });
 
     let lastTime = performance.now();
-    let signalTime = 0;
-
-    function updateSignal(time) {
-      const phase = time % 12;
-      const vehicleGreen = phase < 7;
-      const vehicleYellow = phase >= 7 && phase < 9;
-
-      for (let i = 0; i < allSignalLights.length; i += 3) {
-        allSignalLights[i].color.set(vehicleGreen || vehicleYellow ? 0x550707 : 0xff1717);
-        allSignalLights[i].emissive.set(vehicleGreen || vehicleYellow ? 0x220000 : 0xff0000);
-        allSignalLights[i + 1].color.set(vehicleYellow ? 0xffba13 : 0x594000);
-        allSignalLights[i + 1].emissive.set(vehicleYellow ? 0xff8a00 : 0x1e1600);
-        allSignalLights[i + 2].color.set(vehicleGreen ? 0x0ce54c : 0x064b19);
-        allSignalLights[i + 2].emissive.set(vehicleGreen ? 0x00c83b : 0x001b08);
-      }
-
-      const pedestrianGo = !vehicleGreen && !vehicleYellow;
-      pedLightMat.color.set(pedestrianGo ? 0x28ed50 : 0x7c0909);
-      pedLightMat.emissive.set(pedestrianGo ? 0x00c530 : 0x3c0000);
-      signalStatus.textContent = pedestrianGo ? "● 보행자 통행 가능" : "● 보행자 정지";
-      signalStatus.style.color = pedestrianGo ? "#61ed82" : "#ff6767";
-    }
 
     function animate(now) {
       requestAnimationFrame(animate);
 
       const delta = Math.min((now - lastTime) / 1000, 0.05);
+      const time = now * 0.001;
       lastTime = now;
-      signalTime += delta;
-      updateSignal(signalTime);
 
-      if (isLocked) {
-        const speed = 7.2;
+      if (locked) {
         const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
         const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
         const movement = new THREE.Vector3();
@@ -423,21 +460,53 @@
         if (keys.KeyA) movement.sub(right);
 
         if (movement.lengthSq() > 0) {
-          movement.normalize().multiplyScalar(speed * delta);
+          movement.normalize().multiplyScalar(7 * delta);
           camera.position.add(movement);
-          camera.position.x = THREE.MathUtils.clamp(camera.position.x, -38, 38);
-          camera.position.z = THREE.MathUtils.clamp(camera.position.z, -88, 88);
-          camera.position.y = 1.72;
+          camera.position.x = THREE.MathUtils.clamp(camera.position.x, -45, 45);
+          camera.position.z = THREE.MathUtils.clamp(camera.position.z, -55, 55);
+        }
+
+        camera.position.y = 4.4 + Math.sin(time * 1.2) * 0.08;
+      }
+
+      for (const school of fishSchools) {
+        const orbit = time * school.userData.speed + school.userData.offset;
+        school.position.x += Math.cos(orbit) * 0.0025;
+        school.position.z += Math.sin(orbit * 1.2) * 0.0025;
+        school.rotation.y = Math.sin(orbit) * 0.75;
+
+        school.children.forEach(fish => {
+          fish.rotation.y = Math.sin(time * fish.userData.speed + fish.userData.offset) * 0.65;
+          fish.position.y += Math.sin(time * 2 + fish.userData.offset) * 0.002;
+        });
+      }
+
+      for (const group of seaweedGroups) {
+        group.children.forEach(blade => {
+          blade.rotation.z = Math.sin(time * 1.7 + blade.userData.phase) * 0.16;
+        });
+      }
+
+      for (const bubble of bubbles) {
+        bubble.position.y += bubble.userData.speed * delta;
+        bubble.position.x += Math.sin(time + bubble.userData.drift) * 0.003;
+        if (bubble.position.y > 19) {
+          bubble.position.y = 0.2;
+          bubble.position.x = (Math.random() - 0.5) * 70;
+          bubble.position.z = (Math.random() - 0.5) * 90;
         }
       }
+
+      treasure.rotation.y += delta * 0.08;
+      depthLabel.textContent = `${(24 + Math.max(0, camera.position.z * -0.09)).toFixed(1)} m`;
 
       renderer.render(scene, camera);
     }
 
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(innerWidth, innerHeight);
     });
 
     animate(performance.now());
